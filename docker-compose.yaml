@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  feroxbuster:
+    depends_on:
+      - nginx
+      - crowdsec
+    image: epi052/feroxbuster:latest
+    container_name: feroxbuster
+    entrypoint: sh -c "while true; do feroxbuster -u http://nginx/ >/dev/null 2>&1 && sleep 10s; done"
+  busybox:
+    image: busybox
+    container_name: busybox
+    entrypoint: nc
+    command: -lk -p 8888 -e sleep 60s
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    depends_on:
+      - busybox
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - logs:/var/log/nginx/
+  crowdsec:
+    image: crowdsecurity/crowdsec:latest
+    container_name: crowdsec
+    environment:
+      - COLLECTIONS=crowdsecurity/nginx
+      - DISABLE_PARSERS=crowdsecurity/whitelists
+    volumes:
+      - ./profiles.yaml:/etc/crowdsec/profiles.yaml
+      - ./acquis.yaml:/etc/crowdsec/acquis.yaml
+      - ./http.yaml:/etc/crowdsec/notifications/http_slow.yaml
+      - logs:/var/log/nginx/
+
+volumes:
+  logs:
